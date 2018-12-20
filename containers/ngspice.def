@@ -1,0 +1,47 @@
+bootstrap:docker
+from:centos
+
+%post
+
+  yum -y install wget
+
+  #dependencies
+
+  yum -y install libICE libSM libX11 libXaw libXext libXmu libXt libgomp
+
+  # packages for NGSPICE
+  cd /tmp
+  wget http://springdale.math.ias.edu/data/puias/unsupported/7/x86_64/ngspice-26-5.sdl7.x86_64.rpm
+  rpm -Uvh ngspice-26-5.sdl7.x86_64.rpm
+
+  yum -y install ngspice git
+
+  yum install -y https://centos7.iuscommunity.org/ius-release.rpm
+  yum update
+  yum install -y python36u python36u-libs python36u-devel python36u-pip python36u-tkinter
+
+  pip3.6 install matplotlib
+
+  cd /
+  git clone https://github.com/rstorlabs/fum-tools.git
+
+  /fum-tools/fum-initialize.sh
+
+cat << EOF | /fum-tools/metadata.sh
+  {
+    "architecture":{"isa":"x86"},
+    "class":"6da793a3-c1c5-4b43-8dfb-9fdc502ca1e8",
+    "name":"ngspice",
+    "version":"0.0.1",
+    "distro":"CentOS",
+    "manifest":[
+      "wget", "gcc", "ngspice", "git", "python36", "matplotlib"
+    ]
+  }
+EOF
+
+%runscript
+
+  . /fum-tools/fum-preamble.sh
+
+  "$script_dir/run.sh"

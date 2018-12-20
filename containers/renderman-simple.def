@@ -1,0 +1,79 @@
+bootstrap:docker
+from:centos:latest
+
+######################################################################
+##
+## prerequisites:
+##
+## during build, xwindows needs to be activated for root to get the
+## GUI installer up and running.
+##
+## setenforce 0
+## xhost +
+##
+
+%environment
+
+  PIXAR_LICENSE_FILE="/license/pixar.license"
+  export PIXAR_LICENSE_FILE
+
+%setup
+
+  cp *.rpm "$SINGULARITY_ROOTFS/opt"
+
+%post
+
+  yum install -y git
+
+  cd /
+  git clone https://github.com/rstorlabs/fum-tools.git
+
+  /fum-tools/fum-initialize.sh
+
+  # also create a license directory
+
+  mkdir -p /license
+
+  yum install -y libXext.x86_64 libXrender.x86_64 libXtst.x86_64 libSM
+  yum install -y mesa-libGL-devel.x86_64
+  yum install -y mesa-libGLU-devel.x86_64
+  yum install -y fontconfig
+
+  ######################################################################
+  # install renderman from the instrumented rpm file
+
+  cd /opt
+  renderman_rpm=`ls *.rpm`
+  rpm -ivh "$renderman_rpm"
+
+  # a few things that need to be done before running installer.
+  export DISPLAY=:0
+  export QT_XKB_CONFIG_ROOT=/usr/share/x11/xkb
+  dbus-uuidgen > /etc/machine-id
+
+  /opt/pixar/RenderMan-Installer-22.3/bin/RenderManInstaller
+
+  ######################################################################
+  # clean up the rpm files
+
+  rm -f /opt/*.rpm
+
+cat << EOF | /fum-tools/metadata.sh
+  {
+    "architecture":{"isa":"x86"},
+    "class":"b6edc614-69da-4dba-bd0d-56d958815d0f",
+    "name":"Pixar RenderMan",
+    "version":"0.0.1",
+    "distro":"CentOS",
+    "manifest":[
+      "libXext", "libXrender", "libXtst", "libSM", "mesa-libGL",
+      "RenderMan","PixarLicense"
+    ]
+  }
+EOF
+
+%runscript
+
+  . /fum-tools/fum-preamble.sh
+
+  $script_dir/run.sh -i "$input_dir" -o "$output_dir"

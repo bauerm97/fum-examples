@@ -1,0 +1,95 @@
+bootstrap:docker
+from:centos:latest
+
+######################################################################
+##
+## prerequisites:
+##
+## the following prerequisites should exist inside the cwd during the
+## build process.
+##
+## - renderman pro server software package (RenderManProServer*.rpm)
+## - pixar license server software package (PixarLicense*.rpm)
+
+%environment
+
+  export PIXAR_LICENSE_FILE="/license/pixar.license"
+
+%setup
+
+  cp *.rpm "$SINGULARITY_ROOTFS/opt"
+
+%post
+
+  yum install -y git
+
+  cd /
+  git clone https://github.com/rstorlabs/fum-tools.git
+
+  /fum-tools/fum-initialize.sh
+
+  # also create a license directory
+
+  mkdir -p /license
+
+  ######################################################################
+  # useful dependencies
+
+  yum install -y libXext.x86_64 libXrender.x86_64 libXtst.x86_64 libSM
+  yum install -y mesa-libGL-devel.x86_64
+  yum install -y mesa-libGLU-devel.x86_64
+  yum install -y fontconfig
+  yum install -y pulseaudio pulseaudio-utils
+
+  ######################################################################
+  # install renderman from the instrumented rpm file
+
+  cd /opt
+  renderman_rpm=`ls RenderManProServer*.rpm`
+  rpm -ivh "$renderman_rpm"
+
+  licenseserver_rpm=`ls PixarLicense*.rpm`
+  rpm -ivh "$licenseserver_rpm"
+
+  ######################################################################
+  # clean up the rpm files
+
+  rm -f /opt/*.rpm
+
+cat << EOF | /fum-tools/metadata.sh
+  {
+    "architecture":{"isa":"x86"},
+    "class":"b6edc614-69da-4dba-bd0d-56d958815d0f",
+    "name":"Pixar RenderMan",
+    "version":"0.0.1",
+    "distro":"CentOS",
+    "manifest":[
+      "libXext", "libXrender", "libXtst", "libSM", "mesa-libGL",
+      "RenderMan","PixarLicense"
+    ],
+    "extra_bindmounts":["/license"]
+  }
+EOF
+
+%runscript
+
+  . /fum-tools/fum-preamble.sh
+
+  # always run the license server.
+
+  ls_dir=`ls /opt/pixar | grep PixarLicense`
+  "/opt/pixar/$ls_dir/PixarLicenseServer" &
+  pl_pid="$!"
+
+  # set the RMANTREE environment variable
+
+  rman_dir=`ls /opt/pixar | grep RenderMan`
+  export RMANTREE="/opt/pixar/$rman_dir"
+
+  # run the script
+
+  "$script_dir/run.sh" "$input_dir" "$output_dir"
+
+  # clean up the license server.
+
+  kill "$pl_pid"
