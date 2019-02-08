@@ -9,7 +9,6 @@ if [ ! -f "containers/$1.sif" ]; then
   exit 1
 fi
 
-
 if [ ! -d "$2" ]; then
   echo "no output directory specified"
   exit 1
@@ -20,7 +19,7 @@ fi
 
 if [ -f "setup/$1.sh" ]; then
   echo "using setup bootstrap for $1 example"
-  "setup/$1.sh $1 $2"
+  "setup/$1.sh" $1 $2
 else
   singularity run -B "scripts/$1:/script" -B "inputs/$1:/input" -B "$2:/output" "containers/$1.sif"
 fi
