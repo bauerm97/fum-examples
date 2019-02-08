@@ -1,1 +1,10 @@
+
+# image or sif files are huge binaries.
+
 /containers/*.img
+/containers/*.sif
+
+# the nst-cpu inputs and scripts have binaries which are fetchable, so don't save them.
+
+/inputs/nst-cpu/*
+/scripts/nst-cpu/*

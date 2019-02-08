@@ -33,7 +33,7 @@ cat << EOF | /fum-tools/metadata.sh
     "version":"0.0.1",
     "distro":"Ubuntu",
     "manifest":[
-      "wget", "vim", "git", "numpy", "Pillow", "scipy", "tensorflow" "moviepy"
+      "wget", "vim", "git", "numpy", "Pillow", "scipy", "tensorflow"
     ]
   }
 EOF
@@ -48,6 +48,11 @@ cd /app/fast-style-transfer/
 ckpt=`ls $script_dir`
 
 ckpt_name=`echo $ckpt | cut -f 1 -d '.'`
+
+if [ ckpt_name = "" ]; then
+  echo "no script (checkpoint file) found!"
+  exit 1
+fi
 
 echo -y | python evaluate.py --checkpoint "$script_dir/$ckpt" --in-path "$input_dir" --out-path "$output_dir" --allow-different-dimensions
 
