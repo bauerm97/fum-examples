@@ -1,0 +1,70 @@
+bootstrap: docker
+from: tensorflow/tensorflow:latest-gpu
+
+%environment
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-9.2/lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/nvidia-396/
+
+%post
+
+apt-get update
+apt-get install -y git
+
+# fum boilerplate
+cd /
+git clone https://github.com/rstorlabs/fum-tools.git
+/fum-tools/fum-initialize.sh
+
+# tensorflow
+sudo apt-get install cmake gcc gfortran g++ curl autoconf bzip2 zip unzip python-pip ffmpeg
+pip install --upgrade pip==9.0.3
+pip install numpy Pillow scipy tensorflow
+pip install --trusted-host pypi.python.org moviepy
+
+# we will need bindmounts for external cuda libraries
+mkdir -p /usr/local/cuda-9.2/ /usr/lib/x86_64-linux-gnu/
+
+# fast style transfer
+cd /app
+git clone https://github.com/lengstrom/fast-style-transfer.git
+mv /app/fast-style-transfer/src/* /app/fast-style-transfer
+# remove moviepy dependencies.
+sed -i "14,15d" /app/fast-style-transfer/evaluate.py
+
+# metadata registry
+cat << EOF | /fum-tools/metadata.sh
+  {
+    "architecture":{
+      "isa":"x86",
+      "cpu":{"base-isa":"amd64"},
+      "kernel":{"version":"~> 4.8"},
+      "gpu":{"vendor":"NVIDIA", "driver":"CUDA", "version":"== 9.2"}
+    },
+    "class":"ce5e61f5-e117-49d0-9f6d-f3b576a82b93",
+    "name":"NeuralStyleTransfer",
+    "version":"0.0.1",
+    "distro":"Ubuntu",
+    "manifest":[
+      "wget", "vim", "git", "numpy", "Pillow", "scipy", "tensorflow" "moviepy"
+    ]
+  }
+EOF
+
+%test
+
+%runscript
+
+. /fum-tools/fum-preamble.sh
+
+cd /app/fast-style-transfer/
+
+# for this container, the checkpoint file is the "script"
+ckpt=`ls $script_dir`
+ckpt_name=`echo $ckpt | cut -f 1 -d '.'`
+
+echo -y | python evaluate.py --checkpoint "$script_dir/$ckpt" --in-path "$input_dir" --out-path "$output_dir" --allow-different-dimensions
+
+for file in `ls $output_dir`; do
+  mv "$output_dir/$file" "$output_dir/$ckpt_name-$file"
+done
+
