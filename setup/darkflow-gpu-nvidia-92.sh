@@ -2,6 +2,15 @@
 
 parent=`pwd`
 
+scriptsdir="$parent/scripts/$1"
+
+if [ ! -d "$scriptsdir" ]; then
+  cd "$parent/scripts"
+  git clone https://github.com/rstorlabs/darkflow
+  mv darkflow "$1"
+  cd "$parent"
+fi
+
 weightsdir="$parent/scripts/darkflow-cpu/bin"
 
 mkdir -p "$weightsdir"
