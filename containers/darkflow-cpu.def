@@ -1,0 +1,46 @@
+BootStrap: docker
+From: ubuntu:latest
+
+%post
+
+apt-get update
+apt-get install -y git
+
+# fum boilerplate
+cd /
+git clone https://github.com/rstorlabs/fum-tools.git
+apt-get install -y python3 python3-pip cython3
+/fum-tools/fum-initialize.sh --persistent python3 
+
+apt-get install -y cmake gcc gfortran g++ curl autoconf bzip2 unzip ffmpeg
+apt-get install -y libsm6 libxrender1 libfontconfig1
+
+pip3 install --upgrade pip==9.0.3
+pip3 install opencv-python numpy Pillow scipy tensorflow
+pip3 install --trusted-host pypi.python.org moviepy
+
+mkdir -p /app /liboverride /libfallback /prj /localscratch /localflash /opt /scratch /LICENSE
+
+cd /app
+
+ln -s /usr/bin/python3 /usr/bin/python
+
+# metadata registry
+cat << EOF | /fum-tools/metadata.sh
+  {
+    "architecture":{"isa":"x86"},
+    "class":"c153a632-5d9a-43be-9f8d-554c25e9f70f",
+    "name":"DarkFlow",
+    "version":"0.0.1",
+    "distro":"Ubuntu",
+    "manifest":[
+      "wget", "vim", "git", "numpy", "Pillow", "scipy", "tensorflow"
+    ]
+  }
+EOF
+
+%runscript
+
+. /fum-tools/fum-preamble.sh "$@"
+
+"$script_dir/run.sh"

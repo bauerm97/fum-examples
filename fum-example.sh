@@ -12,6 +12,9 @@ fi
 if [ ! -d "$2" ]; then
   echo "no output directory specified"
   exit 1
+else
+  # clean out the output directory
+  rm -rf "$2/*"
 fi
 
 # run setup bootstrap which can check for file dependencies

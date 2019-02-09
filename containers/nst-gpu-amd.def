@@ -1,9 +1,10 @@
 bootstrap: docker
-from: tensorflow/tensorflow:latest-gpu
+from: ubuntu:latest
 
 %environment
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-9.2/lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/nvidia-396/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm:/opt/rocm/hsa/lib:/opt/rocm/libhsakmt/lib:/opt/rocm/hiprand/lib:/opt/rocm/opencl/lib/x86_64
+export LC_ALL="C"
 
 %post
 
@@ -15,14 +16,16 @@ cd /
 git clone https://github.com/rstorlabs/fum-tools.git
 /fum-tools/fum-initialize.sh
 
+# ROCM-specific things
+mkdir -p /opt
+apt-get install libpci3
+wget http://repo.radeon.com/rocm/misc/tensorflow/tensorflow-1.3.0-cp27-cp27mu-manylinux1_x86_64.whl
+
 # tensorflow
 sudo apt-get install cmake gcc gfortran g++ curl autoconf bzip2 zip unzip python-pip ffmpeg
 pip install --upgrade pip==9.0.3
 pip install numpy Pillow scipy tensorflow
 pip install --trusted-host pypi.python.org moviepy
-
-# we will need bindmounts for external cuda libraries
-mkdir -p /usr/local/cuda-9.2/ /usr/lib/x86_64-linux-gnu/
 
 # fast style transfer
 cd /app
@@ -37,7 +40,7 @@ cat << EOF | /fum-tools/metadata.sh
     "architecture":{
       "isa":"x86",
       "kernel":{"version":"~> 4.8"},
-      "gpu":{"vendor":"NVIDIA", "driver":"CUDA", "version":"== 9.2"}
+      "gpu":{"vendor":"AMD", "driver":"rocm", "version":"~> 1.8"}
     },
     "class":"ce5e61f5-e117-49d0-9f6d-f3b576a82b93",
     "name":"NeuralStyleTransfer",
@@ -45,7 +48,22 @@ cat << EOF | /fum-tools/metadata.sh
     "distro":"Ubuntu",
     "manifest":[
       "wget", "vim", "git", "numpy", "Pillow", "scipy", "tensorflow"
-    ]
+    ],
+    "script": {
+      "patternFiles": {
+        "*.ckpt" : { "type" : "*" }
+      }
+    },
+    "input": {
+      "patternFiles": {
+        "*": { "type": "image/*" }
+      }
+    },
+    "output": {
+      "patternFiles": {
+        "*.jpg": { "type": "image/jpeg"}
+      }
+    }
   }
 EOF
 
@@ -66,4 +84,3 @@ echo -y | python evaluate.py --checkpoint "$script_dir/$ckpt" --in-path "$input_
 for file in `ls $output_dir`; do
   mv "$output_dir/$file" "$output_dir/$ckpt_name-$file"
 done
-
