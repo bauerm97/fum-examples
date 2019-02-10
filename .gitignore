@@ -8,3 +8,10 @@
 
 /inputs/nst-cpu/*
 /scripts/nst-cpu/*
+
+/inputs/nst-gpu-nvidia-100/*
+/scripts/nst-gpu-nvidia-100/*
+
+outputs/*
+
+*~
